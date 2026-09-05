@@ -1,0 +1,141 @@
+// use prisma-next
+
+enum Role {
+  LEARNER
+  DESIGNER
+  ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  fullName      String       @map("full_name")
+  role          Role         @default(LEARNER)
+  profileImage  String?      @map("profile_image")
+  createdAt     TimestamptzString @default(now()) @map("created_at")
+  updatedAt     temporal.updatedAtString() @map("updated_at")
+
+  coursesCreated Course[]    @relation("CourseCreator")
+  enrollments    Enrollment[]
+  certificates   Certificate[]
+
+  @@map("users")
+}
+
+model Course {
+  id               String       @id @default(uuid())
+  title            String
+  description      String?
+  coverImage       String?      @map("cover_image")
+  status           CourseStatus @default(DRAFT)
+  durationMinutes  Int          @default(0) @map("duration_minutes")
+  
+  createdById      String       @map("created_by_id")
+  createdBy        User         @relation("CourseCreator", fields: [createdById], references: [id])
+
+  modules          Module[]
+  assessments      Assessment[]
+  enrollments      Enrollment[]
+  certificates     Certificate[]
+
+  createdAt        TimestamptzString @default(now()) @map("created_at")
+  updatedAt        temporal.updatedAtString() @map("updated_at")
+
+  @@map("courses")
+}
+
+model Module {
+  id          String   @id @default(uuid())
+  title       String
+  subtitle    String?
+  order       Int
+  courseId    String   @map("course_id")
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  chapters    Chapter[]
+  
+  @@map("modules")
+}
+
+model Chapter {
+  id          String   @id @default(uuid())
+  title       String
+  content     String   // Markdown content
+  duration    Int      @default(0) // In minutes
+  order       Int
+  moduleId    String   @map("module_id")
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  
+  @@map("chapters")
+}
+
+// ---- Quizzes & Assessments ----
+
+model Assessment {
+  id          String     @id @default(uuid())
+  title       String
+  courseId    String     @map("course_id")
+  course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  questions   Question[]
+  
+  @@map("assessments")
+}
+
+model Question {
+  id           String     @id @default(uuid())
+  questionText String     @map("question_text")
+  assessmentId String     @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  
+  options      Option[]
+  
+  @@map("questions")
+}
+
+model Option {
+  id          String   @id @default(uuid())
+  optionText  String   @map("option_text")
+  isCorrect   Boolean  @default(false) @map("is_correct")
+  questionId  String   @map("question_id")
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  @@map("options")
+}
+
+// ---- Progress & Certificates ----
+
+model Enrollment {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  courseId          String   @map("course_id")
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course            Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  progressPercent   Float    @default(0) @map("progress_percent")
+  lastActiveAt      TimestamptzString @default(now()) @map("last_active_at")
+  completedAt       TimestamptzString? @map("completed_at")
+  
+  createdAt         TimestamptzString @default(now()) @map("created_at")
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model Certificate {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  courseId    String   @map("course_id")
+  issuedAt    TimestamptzString @default(now()) @map("issued_at")
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
+}

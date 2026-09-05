@@ -1,0 +1,33 @@
+{
+  "name": "perpetua_backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon --watch src --ext ts --exec tsx src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/jwt": "^10.2.2",
+    "@fastify/swagger": "^9.8.1",
+    "@fastify/swagger-ui": "^6.1.1",
+    "@prisma/client": "^5.22.0",
+    "fastify": "^5.12.3",
+    "fastify-type-provider-zod": "^7.0.0",
+    "nodemailer": "^10.0.0",
+    "otp-generator": "^4.0.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "nodemon": "^3.1.14",
+    "prisma": "^5.22.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}
