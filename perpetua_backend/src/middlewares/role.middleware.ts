@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { ForbiddenError } from '../common/errors/custom-errors';
+import { ForbiddenError } from '../shared/errors/custom-errors';
 
 type Role = 'LEARNER' | 'DESIGNER' | 'ADMIN';
 

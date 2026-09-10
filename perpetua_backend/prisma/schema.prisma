@@ -135,11 +135,20 @@ model Enrollment {
   @@map("enrollments")
 }
 
+enum CertificateFormat {
+  JSON
+  PDF
+}
+
 model Certificate {
   id          String   @id @default(uuid())
   userId      String   @map("user_id")
   courseId    String   @map("course_id")
   issuedAt    DateTime @default(now()) @map("issued_at")
+  
+  format      CertificateFormat @default(JSON)
+  payload     Json?
+  fileUrl     String?  @map("file_url")
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)

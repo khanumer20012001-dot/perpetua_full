@@ -1,5 +1,5 @@
 import { IAuthStrategy } from './auth-strategy.interface';
-import { generateOtp, expiresInMinutes } from '../../common/utils/helpers';
+import { generateOtp, expiresInMinutes } from '../../shared/utils/helpers';
 
 /**
  * OTP Email Auth Strategy

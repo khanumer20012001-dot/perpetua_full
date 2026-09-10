@@ -1,0 +1,239 @@
+================================================================================
+PERPETUA BACKEND — COMPLETE ARCHITECTURE & CODEBASE WALKTHROUGH
+================================================================================
+
+Overview:
+Ye document Perpetua Backend k poore codebase ka detailed, file-by-file walkthrough hai. Yahan har folder, har file, uska main maqsad, design pattern, upstream/downstream connections, aur har domain ka end-to-end execution flow easy-to-understand Roman Urdu + English developer style main explain kiya gaya hai.
+
+--------------------------------------------------------------------------------
+1. HIGH-LEVEL LAYERED FLOW — IN ONE SENTENCE
+--------------------------------------------------------------------------------
+
+Perpetua Backend ka main architecture Flat Layered CQRS + Mediator Pattern par base karta hai:
+
+"Jab koi HTTP Request aati hai to wo pehle Plugins/Middlewares se filter hoti hai, phir Route se hoti wi Controller tak poonchti hai. Controller request payload pakad kar ek Command/Query banata hai aur Mediator ko bhejta hai. Mediator correct Handler ko invoke karta hai jo Service ki business logic chalata hai, aur Service Repository k zariye Prisma ORM se PostgreSQL database par safe query run karti hai."
+
+[ HTTP Request ]
+       │
+       ▼
+ ┌──────────────────────────────────────────┐
+ │  plugins/cors.plugin.ts                 │  ← CORS preflight check
+ │  plugins/auth.plugin.ts                 │  ← JWT verify & attach req.user
+ │  plugins/error-handler.plugin.ts        │  ← Catch errors & format JSON
+ └──────────────────┬───────────────────────┘
+                    │
+                    ▼
+ ┌──────────┐    ┌───────────────┐    ┌──────────────┐
+ │  Route   │──► │  Controller   │──► │   Mediator   │
+ └──────────┘    └───────────────┘    └──────┬───────┘
+                                             │ (Dispatches Command / Query)
+                                             ▼
+ ┌──────────┐    ┌───────────────┐    ┌──────────────┐
+ │ Database │◄── │  Repository   │◄── │   Service    │
+ └──────────┘    └───────────────┘    └──────────────┘
+
+--------------------------------------------------------------------------------
+2. ROOT CONFIG & BOOTSTRAPPING FILES
+--------------------------------------------------------------------------------
+
+- package.json
+  * One Job: Project k dependencies, npm scripts, aur metadata manage karta hai.
+  * Main Content: dev script (nodemon --watch src --ext ts --exec "tsx --env-file=.env src/server.ts"), dependencies like fastify, @fastify/jwt, zod, @prisma/client, pdf-lib, nodemailer.
+  * Calls/Called By: npm run dev ya npm start se trigger hota hai.
+
+- tsconfig.json
+  * One Job: TypeScript compiler ki configurations define karta hai (Strict type checking, Target ES2022, CommonJS module system).
+  * Main Content: "rootDir": "./src", "outDir": "./dist", "skipLibCheck": true, "strict": true.
+  * Calls/Called By: npx tsc --noEmit aur tsx execution runner isko use karte hain.
+
+- .env & .env.example
+  * One Job: Database URLs, JWT secrets, SMTP credentials, aur port numbers securely environment variables main set karte hain.
+  * Main Content: DATABASE_URL, JWT_SECRET, PORT=8000, SMTP_EMAIL, SMTP_PASSWORD.
+  * Calls/Called By: src/config/env.config.ts se load hote hain.
+
+- docker-compose.yml
+  * One Job: Local development k liye PostgreSQL (pgvector/pg16) database container run karta hai on port 5433.
+  * Main Content: PostgreSQL container configuration, port mapping 5433:5432, environment credentials.
+  * Calls/Called By: docker compose up -d se PostgreSQL DB live ho jata hai.
+
+- src/server.ts
+  * One Job: Backend application ka main Entry Point hai jo HTTP server ko port 8000 par listen karwata hai.
+  * Main Content: app.listen({ port: env.PORT, host: '0.0.0.0' }), error handling, graceful shutdown.
+  * Calls/Called By: Node process tsx src/server.ts isy sab se pehle execute karta hai. Downstream app.ts ko import karta hai.
+
+- src/app.ts
+  * One Job: Fastify instance create karta hai, global plugins/error handlers register karta hai, aur 7 main domain routes mount karta hai.
+  * Main Content: Fastify app initialization, setErrorHandler(globalErrorHandler), plugin registrations (cors, auth, swagger), route prefix mounts (/api/auth, /api/designer, /api/learner, /api/quizzes, /api/certificates, /api/gemini, /api/users).
+  * Calls/Called By: server.ts isey call karta hai. Ye config/, plugins/, aur sare routes/ files ko import karta hai.
+
+- src/config/env.config.ts
+  * One Job: Environment variables ko safely load aur validate karta hai taake missing .env parameters server crash honay se pehle hi catching mein aa jayen.
+  * Design Pattern: Singleton — ek baar env parse ho kar global export ho jata hai.
+  * Upstream/Downstream: app.ts, server.ts, auth.plugin.ts isey import karte hain.
+
+- src/config/logger.config.ts
+  * One Job: Fastify k built-in Pino logger ki formatting environment k hisab se set karta hai.
+  * Upstream/Downstream: app.ts main Fastify options main pass hota hai.
+
+- src/plugins/cors.plugin.ts
+  * One Job: @fastify/cors plugin wrapping jo frontend web/mobile apps k cross-origin HTTP requests ko allow karti hai.
+  * Design Pattern: Fastify Plugin wrapper via fastify-plugin (fp).
+
+- src/plugins/auth.plugin.ts
+  * One Job: @fastify/jwt ko register karta hai aur fastify.authenticate decorator function export karta hai jo incoming JWT bearer token ko verify karke request.user set karta hai.
+  * Design Pattern: Fastify Plugin + Decorator.
+
+- src/plugins/swagger.plugin.ts
+  * One Job: @fastify/swagger aur @fastify/swagger-ui register karta hai taake interactive API documentation /docs endpoint par live accessible ho.
+  * Design Pattern: Fastify Plugin.
+
+- src/plugins/error-handler.plugin.ts
+  * One Job: Global error handler function (globalErrorHandler) jo AppError subclasses, Fastify validation errors, aur uncaught errors ko handle karke standardized JSON response banata hai.
+  * Upstream/Downstream: app.ts main app.setErrorHandler() par pass hota hai.
+
+--------------------------------------------------------------------------------
+3. DOMAIN-BY-DOMAIN CODEBASE WALKTHROUGH
+--------------------------------------------------------------------------------
+
+=== Domain 1: Auth (Authentication & OTP) ===
+
+- src/routes/auth.routes.ts
+  POST /api/auth/send-otp, POST /api/auth/request-otp, aur POST /api/auth/verify-otp endpoints define karta hai with Zod schemas.
+
+- src/controllers/auth.controller.ts
+  HTTP Controller jo request body se email aur OTP code parhta hai, RequestOtpCommand ya VerifyOtpCommand create karke mediator.send() ko deta hai, aur verify hone par Fastify JWT sign karke token + user profile return karta hai.
+
+- src/mediator/commands/auth/request-otp.handler.ts & verify-otp.handler.ts & auth.commands.ts
+  RequestOtpCommand aur VerifyOtpCommand classes and unke discrete Handlers.
+
+- src/services/auth.service.ts
+  Asal OTP business logic. OTP generate karna (OtpAuthStrategy), Nodemailer se email bhej na, expiry check karna, DB main User record upsert karna.
+
+- src/repositories/auth.repository.ts
+  otp_codes table par Prisma queries run karna (saveOtp, findLatestOtp, deleteOtp).
+
+- src/strategies/auth/auth-strategy.interface.ts & otp-auth.strategy.ts
+  IAuthStrategy interface define karta hai aur OtpAuthStrategy 6-digit random code generate karne aur 10-minute expiration calculate karne ka algorithm implementation karta hai.
+
+End-to-End Recap (Auth Flow):
+Client POST /api/auth/send-otp par email bhejta hai. Route validate kar k AuthController.requestOtp ko deta hai. Controller RequestOtpCommand Mediator ko bhejta hai. Mediator RequestOtpCommandHandler chalata hai jo AuthService.requestOtp call karta hai. Service OtpAuthStrategy se 6-digit code banwati hai, AuthRepository k zariye otp_codes DB table main save karti hai, aur user ko email bhejti hai. Jab user verify karta hai to VerifyOtpCommand se OTP matching & expiry verify hoti hai, UserRepository user ko insert/update karta hai, aur controller signed JWT bearer token client ko wapis bhej deta hai.
+
+
+=== Domain 2: Users (User Profiles & Roles) ===
+
+- src/routes/users.routes.ts: GET /api/users aur PATCH /api/users/:user_id/role endpoints map karta hai.
+- src/controllers/users.controller.ts: Request parse karke ListUsersQuery ya UpdateUserRoleCommand create karke Mediator ko dispatcher karta hai.
+- src/mediator/queries/users/list-users.handler.ts & users.queries.ts & commands/users/update-user-role.handler.ts: User queries & commands.
+- src/services/users.service.ts: All users fetch karna aur User ka role update karna (LEARNER <-> DESIGNER <-> ADMIN).
+- src/repositories/user.repository.ts: Prisma queries on users table.
+
+End-to-End Recap (Users Flow):
+Admin ya client jab PATCH /api/users/:id/role hit karta hai body { role: "DESIGNER" } k sath, to controller UpdateUserRoleCommand Mediator ko bhejta hai. Mediator UpdateUserRoleCommandHandler chalata hai jo UsersService.updateUserRole call karta hai. Service UserRepository.updateRole run karke PostgreSQL DB main users table ka role update karti hai aur updated profile return ho jata hai.
+
+
+=== Domain 3: Courses (Designer & Learner Course Management) ===
+
+- src/routes/courses.routes.ts: Designer endpoints (POST /api/designer/courses, modules, chapters) aur Learner endpoints (GET /api/learner/courses) define karta hai.
+- src/controllers/courses.controller.ts: Body aur params unpack karke CreateCourseCommand, CreateModuleCommand, CreateChapterCommand, etc. Mediator main dispatch karta hai.
+- src/mediator/commands/courses/course.handlers.ts & courses.commands.ts & queries/courses/courses.queries.ts: Course Command & Query handlers.
+- src/services/courses.service.ts: Course business validation (e.g. course publish karne se pehle check karna k 1 module aur 1 chapter exist kare, total duration calculate karna).
+- src/repositories/courses.repository.ts: Prisma transactional writes across courses, modules, chapters tables.
+
+End-to-End Recap (Courses Flow):
+Designer POST /api/designer/courses call karke title & description bhejta hai. Controller CreateCourseCommand Mediator ko bhejta hai. Mediator handler CoursesService.createCourse invoke karta hai jo CoursesRepository.createCourse ke zariye DB main DRAFT status k sath course record write karta hai. Jab designer modules aur chapters add karke publish request karta hai to service validation k baad DB status DRAFT -> PUBLISHED update ho jata hai.
+
+
+=== Domain 4: Enrollments (Course Enrollment & Progress) ===
+
+- src/routes/enrollments.routes.ts: POST /api/learner/courses/:course_id/enroll, GET /api/learner/enrollments/:user_id, etc. map karta hai.
+- src/controllers/enrollments.controller.ts: Requests parse karke EnrollCourseCommand, GetUserEnrollmentsQuery, etc. Mediator par dispatch karta hai.
+- src/mediator/commands/enrollments/enrollment.handlers.ts & enrollment handlers.
+- src/services/enrollment.service.ts: Check karna k course PUBLISHED hai, double-enrollment prevent karna, initial progress 0% set karna, progress calculation, aur progress 100% hone par domain event emit karna.
+- src/repositories/enrollment.repository.ts: enrollments table par Prisma CRUD queries.
+
+End-to-End Recap (Enrollments Flow):
+Learner course page par "Enroll" button click karta hai (POST /api/learner/courses/:id/enroll). Route validation k baad controller EnrollCourseCommand Mediator ko bhejta hai. Handler EnrollmentService.enroll chalata hai jo verify karta hai k course published hai aur student pehle se enrolled nahi hai. Phir EnrollmentRepository DB main new enrollment record creates karta hai. Jab student progress 100% tak poonchata hai to service automatically domain event raise kar deti hai.
+
+
+=== Domain 5: Quizzes / Assessments ===
+
+- src/routes/quizzes.routes.ts: GET /api/quizzes/:assessment_id aur POST /api/quizzes/:assessment_id/submit endpoints map karta hai.
+- src/controllers/quizzes.controller.ts: Request parse karke GetQuizQuery ya SubmitQuizCommand Mediator ko bhejta hai.
+- src/mediator/commands/assessments/quiz.handlers.ts & assessments.commands.ts: Quiz handlers.
+- src/services/assessment.service.ts: Answer evaluation algorithm: learner k submitted option IDs ko DB k isCorrect=true flags se compare karna, score percentage calculate karna, pass/fail result nikalna (70% passing threshold), aur pass hone par enrollment progress 100% mark karna.
+- src/repositories/assessment.repository.ts: assessments, questions, options tables se relation queries run karna.
+
+End-to-End Recap (Quiz Flow):
+Learner quiz submit karta hai (POST /api/quizzes/:id/submit). Controller SubmitQuizCommand Mediator main bhejta hai. Handler QuizzesService.submitQuiz call karta hai. Service DB se correct answers fetch karke comparison karti hai: (Correct Answers / Total Questions) * 100. Agar score >= 70% ho to quiz passed: true return karta hai aur auto-enrollment completion update shuru ho jata hai.
+
+
+=== Domain 6: Certificates (JSON & Real PDF Auto-Generation) ===
+
+- src/routes/certificates.routes.ts: POST /api/certificates (JSON or PDF format issue) aur GET /api/certificates/:user_id map karta hai.
+- src/controllers/certificates.controller.ts: Request payload parse karke IssueCertificateCommand ya GetUserCertificatesQuery Mediator ko bhejta hai.
+- src/mediator/commands/certificates/issue-certificate.handler.ts: Certificate handlers.
+- src/services/certificate.service.ts: Verify karna k course 100% completed hai, duplicate certificate prevent karna, requested format k mutabiq Strategy pick karna, result DB main save karwana.
+- src/repositories/certificate.repository.ts: certificates table par CRUD.
+- src/strategies/certificate/cert-strategy.interface.ts, json-certificate.strategy.ts, & pdf-certificate.strategy.ts: JsonCertificateStrategy JSON payload & verification ID generate karta hai. PdfCertificateStrategy pdf-lib engine se real PDF binary graphics create karke uploads/certificates/ directory main .pdf file write karta hai.
+
+End-to-End Recap (Certificates Flow):
+Student request bhejta hai POST /api/certificates { format: "PDF" }. Controller IssueCertificateCommand Mediator ko bhejta hai. Handler CertificatesService.issueCertificate ko call karta hai. Service checks k banda 100% progress par hai, phir PdfCertificateStrategy execute hoti hai jo pdf-lib vector engine se real PDF page build karke disk file uploads/certificates/cert_...pdf banati hai. DB record save hota hai aur PDF download URL response main wapis chala jata hai.
+
+
+=== Domain 7: Gemini (AI Course Generation Facade) ===
+
+- src/routes/gemini.routes.ts: POST /api/gemini/generate-course endpoint define karta hai.
+- src/controllers/gemini.controller.ts: Prompt text aur user ID lekar GenerateAiCourseCommand Mediator ko bhejta hai.
+- src/modules/gemini/handlers/generate-course.handler.ts: Mediator handler jo GeminiService Facade ko invoke karta hai.
+- src/modules/gemini/prompts/course-generation.prompt.ts: Gemini LLM k liye structured JSON prompt template construct karta hai.
+- src/modules/gemini/gemini.service.ts: Gemini API call karta hai, raw text JSON parse karta hai, aur automatically CoursesService & CoursesRepository k zariye poora course structure DB main insert kar deta hai.
+
+End-to-End Recap (Gemini Flow):
+Designer prompt bhejta hai "Build a 3-module Flutter course". Request GeminiController -> Mediator -> GenerateAiCourseCommandHandler -> GeminiService Facade tak jati hai. Service prompt template banati hai, Gemini API se full JSON response leti hai, parse kar ke nested database transaction chalati hai, aur complete ready-to-publish course create karke return kar deti hai.
+
+--------------------------------------------------------------------------------
+4. CROSS-CUTTING CONCERNS & SHARED UTILITIES
+--------------------------------------------------------------------------------
+
+- src/middlewares/role.middleware.ts: Role-based access control factory (requireRole('DESIGNER'), requireRole('ADMIN')).
+- src/events/event-bus.ts: Node.js EventEmitter par base karta hua in-process typed Event Bus singleton (Observer Pattern).
+- src/shared/errors/custom-errors.ts: AppError base class & subclasses (NotFoundError, UnauthorizedError, ForbiddenError, BadRequestError).
+- src/shared/response/api-response.ts: Standardized API JSON envelope builder (ApiResponse.success, ApiResponse.error).
+- src/shared/types/*.types.ts: Domain DTO interfaces (auth.types.ts, course.types.ts, enrollment.types.ts, etc.).
+- src/shared/utils/helpers.ts: Pure utility functions (random OTP, progress calc, dates).
+- src/db/prisma.ts: Singleton PrismaClient instance initialization & connection lifecycle.
+- src/types/otp-generator.d.ts: Third-party module otp-generator ambient TypeScript type definitions.
+- prisma/schema.prisma: Single-source-of-truth PostgreSQL schema models (User, Course, Module, Chapter, Assessment, Question, Option, Enrollment, Certificate, OtpCode).
+
+--------------------------------------------------------------------------------
+5. COMPLETE SUMMARY TABLE OF DESIGN PATTERNS
+--------------------------------------------------------------------------------
+
+Pattern: Mediator
+Location: src/mediator/
+Purpose: Controller aur Service layer k darmian loose coupling banata hai by dispatching Commands & Queries.
+
+Pattern: Repository
+Location: src/repositories/
+Purpose: Prisma ORM queries ko domain interfaces k peeche encapsulate karta hai.
+
+Pattern: Strategy
+Location: src/strategies/
+Purpose: Pluggable algorithms: Auth Strategies (OtpAuthStrategy), Certificate Strategies (JsonCertificateStrategy, PdfCertificateStrategy).
+
+Pattern: Facade
+Location: src/modules/gemini/
+Purpose: Complex AI prompt engineering and API logic ko ek simple GeminiService facade k peechay chhupata hai.
+
+Pattern: Singleton
+Location: src/db/prisma.ts, src/config/env.config.ts
+Purpose: Global shared instances (Prisma Client connection pool, validated env config).
+
+Pattern: Observer / Pub-Sub
+Location: src/events/event-bus.ts
+Purpose: Event-driven decoupled communication for domain events.
+
+Pattern: Factory
+Location: src/shared/response/api-response.ts
+Purpose: Uniform ApiResponse envelope creation across all endpoints.
+================================================================================
