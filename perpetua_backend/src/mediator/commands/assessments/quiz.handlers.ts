@@ -1,6 +1,7 @@
 import { ICommand, IQuery, IHandler } from '../../mediator.interface';
 import { quizzesRepository, QuizzesRepository } from '../../../repositories/assessment.repository';
 import { NotFoundError } from '../../../shared/errors/custom-errors';
+import { eventBus, DomainEvents } from '../../../events/event-bus';
 
 export class GetQuizQuery implements IQuery<any> {
   readonly kind = 'GetQuizQuery';
@@ -44,6 +45,11 @@ export class SubmitQuizCommandHandler implements IHandler<SubmitQuizCommand, any
         const enrollment = await this.repo.findEnrollment(assessment.courseId, userId);
         if (enrollment) {
           await this.repo.updateEnrollmentProgress(enrollment.id, 100.0);
+          await eventBus.emitAsync(DomainEvents.COURSE_COMPLETED, {
+            userId,
+            courseId: assessment.courseId,
+            enrollmentId: enrollment.id,
+          });
         }
       }
     }

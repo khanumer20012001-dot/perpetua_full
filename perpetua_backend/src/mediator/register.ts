@@ -28,6 +28,7 @@ import { UpdateUserRoleCommandHandler } from './commands/users/update-user-role.
 import { GenerateAiCourseCommandHandler } from '../modules/gemini/handlers/generate-course.handler';
 import { StreamDiscoveryQuestionsCommandHandler } from '../modules/gemini/handlers/stream-discovery.handler';
 import { StreamCourseDraftCommandHandler } from '../modules/gemini/handlers/stream-draft.handler';
+import { registerCourseCompletedListener } from '../events/listeners/course-completed.listener';
 
 let isRegistered = false;
 
@@ -76,6 +77,9 @@ export function registerMediatorHandlers(): void {
   mediator.register('GenerateAiCourseCommand', new GenerateAiCourseCommandHandler());
   mediator.register('StreamDiscoveryQuestionsCommand', new StreamDiscoveryQuestionsCommandHandler());
   mediator.register('StreamCourseDraftCommand', new StreamCourseDraftCommandHandler());
+
+  // Event Listeners
+  registerCourseCompletedListener();
 
   isRegistered = true;
 }
