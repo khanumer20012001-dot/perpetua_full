@@ -44,6 +44,25 @@ export class EnrollmentsController {
       return reply.status(error.statusCode || 500).send({ detail: error.message });
     }
   }
+
+  async updateProgress(request: FastifyReq, reply: FastifyReply) {
+    try {
+      const params = (request.params || {}) as any;
+      const body = (request.body || {}) as any;
+      const courseId = params.course_id || body.courseId || body.course_id;
+      const userId = body.user_id || body.userId || 'anonymous';
+      const progressPercent = typeof body.progressPercent === 'number' 
+        ? body.progressPercent 
+        : parseFloat(body.progressPercent || '0');
+
+      const result = await mediator.send(
+        new (await import('../mediator/commands/enrollments/enrollment.handlers')).UpdateProgressCommand(userId, courseId, progressPercent)
+      );
+      return reply.send(result);
+    } catch (error: any) {
+      return reply.status(error.statusCode || 500).send({ detail: error.message });
+    }
+  }
 }
 
 export const enrollmentsController = new EnrollmentsController();

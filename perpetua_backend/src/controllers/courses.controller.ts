@@ -1,10 +1,12 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { mediator } from '../mediator/mediator';
+import { coursesService } from '../services/courses.service';
 import {
   CreateCourseCommand,
   CreateModuleCommand,
   CreateChapterCommand,
   CreateFullCourseCommand,
+  UpdateFullCourseCommand,
   GetPublishedCoursesQuery,
   GetCourseDetailQuery,
   PublishCourseCommand,
@@ -12,6 +14,7 @@ import {
 } from '../mediator/commands/courses/course.handlers';
 
 type FastifyReq = FastifyRequest<any>;
+
 
 export class CoursesController {
   async createCourse(request: FastifyReq, reply: FastifyReply) {
@@ -64,6 +67,17 @@ export class CoursesController {
     }
   }
 
+  async updateFullCourse(request: FastifyReq, reply: FastifyReply) {
+    try {
+      const params = (request.params || {}) as Record<string, any>;
+      const course = await mediator.send(new UpdateFullCourseCommand(params.course_id, request.body));
+      return reply.send(course);
+    } catch (error: any) {
+      return reply.status(error.statusCode || 500).send({ detail: error.message });
+    }
+  }
+
+
   async publishCourse(request: FastifyReq, reply: FastifyReply) {
     try {
       const params = (request.params || {}) as Record<string, any>;
@@ -93,6 +107,15 @@ export class CoursesController {
     }
   }
 
+  async getAllCourses(_request: FastifyReq, reply: FastifyReply) {
+    try {
+      const courses = await coursesService.getAllCourses();
+      return reply.send(courses);
+    } catch (error: any) {
+      return reply.status(error.statusCode || 500).send({ detail: error.message });
+    }
+  }
+
   async getCourseDetails(request: FastifyReq, reply: FastifyReply) {
     try {
       const params = (request.params || {}) as Record<string, any>;
@@ -105,3 +128,4 @@ export class CoursesController {
 }
 
 export const coursesController = new CoursesController();
+

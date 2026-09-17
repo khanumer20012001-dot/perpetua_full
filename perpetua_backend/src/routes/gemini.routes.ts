@@ -29,4 +29,32 @@ export const geminiRoutes: FastifyPluginAsync = async (app) => {
       return geminiController.handleAiRequest(request, reply);
     }
   );
+
+  server.post(
+    '/stream-discovery',
+    {
+      schema: {
+        body: z.object({
+          brief: z.string().optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      return geminiController.handleStreamDiscovery(request, reply);
+    }
+  );
+
+  server.post(
+    '/stream-draft',
+    {
+      schema: {
+        body: z.object({
+          brief: z.string().optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      return geminiController.handleStreamDraft(request, reply);
+    }
+  );
 };

@@ -80,6 +80,25 @@ export class EnrollmentsService {
         : null,
     };
   }
+
+  async updateProgress(userId: string, courseId: string, progressPercent: number) {
+    let targetUserId = userId;
+    if (!targetUserId || targetUserId === 'anonymous') {
+      const firstUser = await prisma.user.findFirst();
+      if (firstUser) {
+        targetUserId = firstUser.id;
+      }
+    } else {
+      const existingUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+      if (!existingUser) {
+        const firstUser = await prisma.user.findFirst();
+        if (firstUser) {
+          targetUserId = firstUser.id;
+        }
+      }
+    }
+    return this.repo.updateProgress(targetUserId, courseId, progressPercent);
+  }
 }
 
 export const enrollmentsService = new EnrollmentsService();

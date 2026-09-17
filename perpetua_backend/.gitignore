@@ -1,0 +1,26 @@
+# Environment variables (CRITICAL: Never commit API keys or secrets)
+.env
+.env.*
+*.env
+
+# Dependencies
+node_modules/
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+
+# Build & Runtime
+dist/
+build/
+uploads/
+*.log
+*.tmp
+*.tmp*
+
+# System & IDE
+.DS_Store
+.vscode/

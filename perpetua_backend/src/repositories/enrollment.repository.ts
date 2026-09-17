@@ -35,7 +35,7 @@ export class EnrollmentsRepository {
     return prisma.enrollment.count({
       where: {
         userId,
-        progressPercent: { gt: 0, lt: 100 },
+        progressPercent: { lt: 100 },
       },
     });
   }
@@ -74,6 +74,21 @@ export class EnrollmentsRepository {
     return prisma.course.findFirst({
       where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateProgress(userId: string, courseId: string, progressPercent: number) {
+    let enrollment = await this.findEnrollment(courseId, userId);
+    if (!enrollment) {
+      enrollment = await this.createEnrollment(userId, courseId);
+    }
+    return prisma.enrollment.update({
+      where: { id: enrollment.id },
+      data: {
+        progressPercent,
+        lastActiveAt: new Date(),
+        completedAt: progressPercent >= 100 ? new Date() : enrollment.completedAt,
+      },
     });
   }
 }

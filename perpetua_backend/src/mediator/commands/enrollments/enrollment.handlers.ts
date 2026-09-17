@@ -39,3 +39,19 @@ export class GetDashboardStatsQueryHandler implements IHandler<GetDashboardStats
     return this.service.getDashboardStats(query.userId);
   }
 }
+
+export class UpdateProgressCommand implements ICommand<any> {
+  readonly kind = 'UpdateProgressCommand';
+  constructor(
+    public readonly userId: string,
+    public readonly courseId: string,
+    public readonly progressPercent: number
+  ) {}
+}
+
+export class UpdateProgressCommandHandler implements IHandler<UpdateProgressCommand, any> {
+  constructor(private service: EnrollmentsService = enrollmentsService) {}
+  async handle(command: UpdateProgressCommand): Promise<any> {
+    return this.service.updateProgress(command.userId, command.courseId, command.progressPercent);
+  }
+}

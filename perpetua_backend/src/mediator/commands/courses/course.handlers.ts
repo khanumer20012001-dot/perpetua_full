@@ -87,6 +87,22 @@ export class CreateFullCourseCommandHandler implements IHandler<CreateFullCourse
   }
 }
 
+export class UpdateFullCourseCommand implements ICommand<any> {
+  readonly kind = 'UpdateFullCourseCommand';
+  constructor(
+    public readonly courseId: string,
+    public readonly data: any
+  ) {}
+}
+
+export class UpdateFullCourseCommandHandler implements IHandler<UpdateFullCourseCommand, any> {
+  constructor(private service: CoursesService = coursesService) {}
+  async handle(command: UpdateFullCourseCommand): Promise<any> {
+    return this.service.updateFullCourse(command.courseId, command.data);
+  }
+}
+
+
 export class GetPublishedCoursesQuery implements IQuery<any[]> {
   readonly kind = 'GetPublishedCoursesQuery';
 }

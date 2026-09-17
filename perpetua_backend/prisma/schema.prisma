@@ -99,6 +99,7 @@ model Question {
   questionText String     @map("question_text")
   assessmentId String     @map("assessment_id")
   assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  moduleId     String?    @map("module_id")
   
   options      Option[]
   

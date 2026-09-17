@@ -24,33 +24,189 @@ export class CoursesRepository {
     });
   }
 
+
+
   async findCourseDetailsById(id: string) {
-    return prisma.course.findUnique({
+    const course = await prisma.course.findUnique({
       where: { id },
       include: {
         modules: {
+          orderBy: { order: 'asc' },
           include: {
-            chapters: true,
+            chapters: {
+              orderBy: { order: 'asc' },
+            },
           },
         },
-        assessments: true,
+        assessments: {
+          include: {
+            questions: {
+              include: {
+                options: true,
+              },
+            },
+          },
+        },
+        enrollments: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
       },
     });
+
+    if (!course) return null;
+
+    const questions = course.assessments.flatMap((a) => a.questions) || [];
+    const formattedModules = course.modules.map((mod, index) => {
+      const q = questions.find((item: any) => item.moduleId === mod.id) || questions[index];
+      let quiz = null;
+      if (q && q.questionText && q.options && q.options.length > 0) {
+        const options = q.options.map((o) => o.optionText);
+        const correctIdx = q.options.findIndex((o) => o.isCorrect);
+        quiz = {
+          id: q.id,
+          question: q.questionText,
+          options,
+          correctAnswerIndex: correctIdx >= 0 ? correctIdx : 0,
+        };
+      }
+      return {
+        ...mod,
+        quiz,
+      };
+    });
+
+    return {
+      ...course,
+      modules: formattedModules,
+    };
   }
 
   async findPublishedCourses() {
-    return prisma.course.findMany({
+    const courses = await prisma.course.findMany({
       where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
       include: {
         modules: {
+          orderBy: { order: 'asc' },
           include: {
-            chapters: true,
+            chapters: {
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+        assessments: {
+          include: {
+            questions: {
+              include: {
+                options: true,
+              },
+            },
+          },
+        },
+        enrollments: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
           },
         },
       },
     });
+
+    return courses.map((course) => {
+      const questions = course.assessments.flatMap((a) => a.questions) || [];
+      const formattedModules = course.modules.map((mod, index) => {
+        const q = questions.find((item: any) => item.moduleId === mod.id) || questions[index];
+        let quiz = null;
+        if (q && q.questionText && q.options && q.options.length > 0) {
+          const options = q.options.map((o) => o.optionText);
+          const correctIdx = q.options.findIndex((o) => o.isCorrect);
+          quiz = {
+            id: q.id,
+            question: q.questionText,
+            options,
+            correctAnswerIndex: correctIdx >= 0 ? correctIdx : 0,
+          };
+        }
+        return {
+          ...mod,
+          quiz,
+        };
+      });
+
+      return {
+        ...course,
+        modules: formattedModules,
+      };
+    });
   }
+
+  async findAllCourses() {
+    const courses = await prisma.course.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        modules: {
+          orderBy: { order: 'asc' },
+          include: {
+            chapters: {
+              orderBy: { order: 'asc' },
+            },
+          },
+        },
+        assessments: {
+          include: {
+            questions: {
+              include: {
+                options: true,
+              },
+            },
+          },
+        },
+        enrollments: true,
+        createdBy: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return courses.map((course) => {
+      const questions = course.assessments.flatMap((a) => a.questions) || [];
+      const formattedModules = course.modules.map((mod, index) => {
+        const q = questions.find((item: any) => item.moduleId === mod.id) || questions[index];
+        let quiz = null;
+        if (q && q.questionText && q.options && q.options.length > 0) {
+          const options = q.options.map((o) => o.optionText);
+          const correctIdx = q.options.findIndex((o) => o.isCorrect);
+          quiz = {
+            id: q.id,
+            question: q.questionText,
+            options,
+            correctAnswerIndex: correctIdx >= 0 ? correctIdx : 0,
+          };
+        }
+        return {
+          ...mod,
+          quiz,
+        };
+      });
+
+      return {
+        ...course,
+        modules: formattedModules,
+      };
+    });
+  }
+
 
   async createModule(data: {
     title: string;
@@ -165,6 +321,7 @@ export class CoursesRepository {
       },
       include: {
         modules: {
+          orderBy: { order: 'asc' },
           include: { chapters: true },
         },
       },
@@ -177,26 +334,150 @@ export class CoursesRepository {
       },
     });
 
-    for (const mod of data.modules) {
-      const quiz = mod.quiz;
-      if (quiz) {
-        await prisma.question.create({
+    const sortedModules = [...course.modules].sort((a, b) => a.order - b.order);
+
+    const questionsToCreate = data.modules
+      .map((mod, i) => ({ mod, createdMod: sortedModules[i] }))
+      .filter(({ mod }) => mod.quiz && mod.quiz.question && mod.quiz.options && mod.quiz.options.length > 0);
+
+    if (questionsToCreate.length > 0) {
+      await prisma.$transaction(
+        questionsToCreate.map(({ mod, createdMod }) => {
+          const quiz = mod.quiz!;
+          return prisma.question.create({
+            data: {
+              questionText: quiz.question,
+              assessmentId: assessment.id,
+              moduleId: createdMod ? createdMod.id : undefined,
+              options: {
+                create: quiz.options.map((opt, optIdx) => ({
+                  optionText: opt,
+                  isCorrect: optIdx === quiz.correctAnswerIndex,
+                })),
+              },
+            },
+          });
+        })
+      );
+    }
+
+    return this.findCourseDetailsById(course.id);
+  }
+
+  async updateFullCourse(id: string, data: {
+    title?: string;
+    description?: string;
+    cover_image?: string;
+    status?: 'DRAFT' | 'PUBLISHED';
+    modules?: Array<{
+      id?: string;
+      title: string;
+      subtitle?: string;
+      duration?: string;
+      content?: string;
+      chapters?: Array<{
+        id?: string;
+        title?: string;
+        content?: string;
+        duration?: number;
+      }>;
+      quiz?: {
+        id?: string;
+        question: string;
+        options: string[];
+        correctAnswerIndex: number;
+      };
+    }>;
+  }) {
+    // 1. Update basic fields on course
+    await prisma.course.update({
+      where: { id },
+      data: {
+        ...(data.title ? { title: data.title } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.cover_image !== undefined ? { coverImage: data.cover_image } : {}),
+        ...(data.status ? { status: data.status } : {}),
+      },
+    });
+
+    // 2. If modules provided, replace modules, chapters, and assessment questions
+    if (data.modules && Array.isArray(data.modules)) {
+      await prisma.$transaction([
+        prisma.chapter.deleteMany({ where: { module: { courseId: id } } }),
+        prisma.question.deleteMany({ where: { assessment: { courseId: id } } }),
+        prisma.assessment.deleteMany({ where: { courseId: id } }),
+        prisma.module.deleteMany({ where: { courseId: id } }),
+      ]);
+
+      const createdModules: any[] = [];
+      for (let index = 0; index < data.modules.length; index++) {
+        const mod = data.modules[index];
+        const minsMatch = (mod.duration || '15 mins').match(/(\d+)/);
+        const defaultDuration = minsMatch ? parseInt(minsMatch[1], 10) : 15;
+
+        const chaptersToCreate = mod.chapters && Array.isArray(mod.chapters) && mod.chapters.length > 0
+          ? mod.chapters.map((chap, cIdx) => ({
+              title: chap.title || 'Content',
+              content: chap.content || '',
+              duration: chap.duration || defaultDuration,
+              order: cIdx,
+            }))
+          : [
+              {
+                title: 'Content',
+                content: mod.content || '',
+                duration: defaultDuration,
+                order: 0,
+              },
+            ];
+
+        const createdMod = await prisma.module.create({
           data: {
-            questionText: quiz.question,
-            assessmentId: assessment.id,
-            options: {
-              create: quiz.options.map((opt, i) => ({
-                optionText: opt,
-                isCorrect: i === quiz.correctAnswerIndex,
-              })),
+            title: mod.title,
+            subtitle: mod.subtitle || null,
+            order: index,
+            courseId: id,
+            chapters: {
+              create: chaptersToCreate,
             },
           },
         });
+        createdModules.push({ mod, createdMod });
+      }
+
+      // Re-create assessments and quiz questions
+      const questionsToCreate = createdModules.filter(({ mod }) => mod.quiz && mod.quiz.question && mod.quiz.options && mod.quiz.options.length > 0);
+
+      if (questionsToCreate.length > 0) {
+        const assessment = await prisma.assessment.create({
+          data: {
+            title: 'Course Quiz',
+            courseId: id,
+          },
+        });
+
+        for (const { mod, createdMod } of questionsToCreate) {
+          const quiz = mod.quiz;
+          await prisma.question.create({
+            data: {
+              questionText: quiz.question,
+              assessmentId: assessment.id,
+              moduleId: createdMod.id,
+              options: {
+                create: quiz.options.map((opt: string, optIdx: number) => ({
+                  optionText: opt,
+                  isCorrect: optIdx === quiz.correctAnswerIndex,
+                })),
+              },
+            },
+          });
+        }
       }
     }
 
-    return course;
+    return this.findCourseDetailsById(id);
   }
 }
 
 export const coursesRepository = new CoursesRepository();
+

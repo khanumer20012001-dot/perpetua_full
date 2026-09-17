@@ -64,6 +64,15 @@ export class CoursesService {
     return this.repo.createFullCourse(data);
   }
 
+  async updateFullCourse(id: string, data: any) {
+    const course = await this.repo.findCourseById(id);
+    if (!course) {
+      throw new NotFoundError('Course not found');
+    }
+    return this.repo.updateFullCourse(id, data);
+  }
+
+
   async publishCourse(courseId: string) {
     const course = await this.repo.findCourseById(courseId);
     if (!course) {
@@ -84,6 +93,10 @@ export class CoursesService {
     return this.repo.findPublishedCourses();
   }
 
+  async getAllCourses() {
+    return this.repo.findAllCourses();
+  }
+
   async getCourseDetails(courseId: string) {
     const course = await this.repo.findCourseDetailsById(courseId);
     if (!course) {
@@ -94,3 +107,4 @@ export class CoursesService {
 }
 
 export const coursesService = new CoursesService();
+

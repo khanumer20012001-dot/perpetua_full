@@ -6,6 +6,7 @@ import {
   EnrollCourseCommandHandler,
   GetUserEnrollmentsQueryHandler,
   GetDashboardStatsQueryHandler,
+  UpdateProgressCommandHandler,
 } from '../mediator/commands/enrollments/enrollment.handlers';
 import { enrollmentsController } from '../controllers/enrollments.controller';
 
@@ -13,6 +14,7 @@ import { enrollmentsController } from '../controllers/enrollments.controller';
 mediator.register('EnrollCourseCommand', new EnrollCourseCommandHandler());
 mediator.register('GetUserEnrollmentsQuery', new GetUserEnrollmentsQueryHandler());
 mediator.register('GetDashboardStatsQuery', new GetDashboardStatsQueryHandler());
+mediator.register('UpdateProgressCommand', new UpdateProgressCommandHandler());
 
 export const enrollmentRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -28,6 +30,20 @@ export const enrollmentRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request, reply) => {
       return enrollmentsController.enroll(request, reply);
+    }
+  );
+
+  // Update Course Progress
+  server.post(
+    '/enrollments/:course_id/progress',
+    {
+      schema: {
+        params: z.object({ course_id: z.string() }),
+        body: z.object({ user_id: z.string().optional(), userId: z.string().optional(), progressPercent: z.number() }),
+      },
+    },
+    async (request, reply) => {
+      return enrollmentsController.updateProgress(request, reply);
     }
   );
 

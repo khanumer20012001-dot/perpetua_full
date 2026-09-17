@@ -7,6 +7,7 @@ import {
   CreateModuleCommandHandler,
   CreateChapterCommandHandler,
   CreateFullCourseCommandHandler,
+  UpdateFullCourseCommandHandler,
   GetPublishedCoursesQueryHandler,
   GetCourseDetailQueryHandler,
   PublishCourseCommandHandler,
@@ -19,6 +20,7 @@ mediator.register('CreateCourseCommand', new CreateCourseCommandHandler());
 mediator.register('CreateModuleCommand', new CreateModuleCommandHandler());
 mediator.register('CreateChapterCommand', new CreateChapterCommandHandler());
 mediator.register('CreateFullCourseCommand', new CreateFullCourseCommandHandler());
+mediator.register('UpdateFullCourseCommand', new UpdateFullCourseCommandHandler());
 mediator.register('GetPublishedCoursesQuery', new GetPublishedCoursesQueryHandler());
 mediator.register('GetCourseDetailQuery', new GetCourseDetailQueryHandler());
 mediator.register('PublishCourseCommand', new PublishCourseCommandHandler());
@@ -123,6 +125,53 @@ export const designerCourseRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
+  // Update Full Course (Nested)
+  server.put(
+    '/courses/:course_id/full',
+    {
+      schema: {
+        params: z.object({ course_id: z.string() }),
+        body: z.object({
+          title: z.string().optional(),
+          description: z.string().optional(),
+          cover_image: z.string().optional(),
+          status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+          modules: z.array(
+            z.object({
+              id: z.string().optional(),
+              title: z.string(),
+              subtitle: z.string().optional(),
+              duration: z.string().optional(),
+              content: z.string().optional(),
+              chapters: z
+                .array(
+                  z.object({
+                    id: z.string().optional(),
+                    title: z.string().optional(),
+                    content: z.string().optional(),
+                    duration: z.number().optional(),
+                  })
+                )
+                .optional(),
+              quiz: z
+                .object({
+                  id: z.string().optional(),
+                  question: z.string(),
+                  options: z.array(z.string()),
+                  correctAnswerIndex: z.number(),
+                })
+                .optional(),
+            })
+          ).optional(),
+        }),
+      },
+    },
+    async (request, reply) => {
+      return coursesController.updateFullCourse(request, reply);
+    }
+  );
+
+
   // Publish Course
   server.post(
     '/courses/:course_id/publish',
@@ -148,6 +197,11 @@ export const designerCourseRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 
+  // Get All Courses (Designer - DRAFT & PUBLISHED)
+  server.get('/courses', async (request, reply) => {
+    return coursesController.getAllCourses(request, reply);
+  });
+
   // Delete Course
   server.delete(
     '/courses/:course_id',
@@ -161,6 +215,7 @@ export const designerCourseRoutes: FastifyPluginAsync = async (app) => {
     }
   );
 };
+
 
 export const learnerCourseRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();
