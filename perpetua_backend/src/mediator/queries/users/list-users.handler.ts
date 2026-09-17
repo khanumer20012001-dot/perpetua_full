@@ -1,14 +1,14 @@
 import { IQuery, IHandler } from '../../mediator.interface';
-import { usersService, UsersService } from '../../../services/users.service';
+import { usersRepository, UsersRepository } from '../../../repositories/user.repository';
 
 export class ListUsersQuery implements IQuery<any[]> {
   readonly kind = 'ListUsersQuery';
 }
 
 export class ListUsersQueryHandler implements IHandler<ListUsersQuery, any[]> {
-  constructor(private service: UsersService = usersService) {}
+  constructor(private repo: UsersRepository = usersRepository) {}
 
   async handle(_query: ListUsersQuery): Promise<any[]> {
-    return this.service.listUsers();
+    return this.repo.findAllUsers();
   }
 }

@@ -1,5 +1,6 @@
 import { ICommand, IQuery, IHandler } from '../../mediator.interface';
-import { quizzesService, QuizzesService } from '../../../services/assessment.service';
+import { quizzesRepository, QuizzesRepository } from '../../../repositories/assessment.repository';
+import { NotFoundError } from '../../../shared/errors/custom-errors';
 
 export class GetQuizQuery implements IQuery<any> {
   readonly kind = 'GetQuizQuery';
@@ -7,9 +8,13 @@ export class GetQuizQuery implements IQuery<any> {
 }
 
 export class GetQuizQueryHandler implements IHandler<GetQuizQuery, any> {
-  constructor(private service: QuizzesService = quizzesService) {}
+  constructor(private repo: QuizzesRepository = quizzesRepository) {}
   async handle(query: GetQuizQuery): Promise<any> {
-    return this.service.getQuiz(query.assessmentId);
+    const assessment = await this.repo.findAssessmentById(query.assessmentId);
+    if (!assessment) {
+      throw new NotFoundError('Assessment not found');
+    }
+    return assessment;
   }
 }
 
@@ -23,8 +28,30 @@ export class SubmitQuizCommand implements ICommand<any> {
 }
 
 export class SubmitQuizCommandHandler implements IHandler<SubmitQuizCommand, any> {
-  constructor(private service: QuizzesService = quizzesService) {}
+  constructor(private repo: QuizzesRepository = quizzesRepository) {}
   async handle(command: SubmitQuizCommand): Promise<any> {
-    return this.service.submitQuiz(command.assessmentId, command.userId, command.answers);
+    const { assessmentId, userId, answers } = command;
+    const selectedOptionIds = Object.values(answers);
+    const selectedOptions = await this.repo.findOptionsByIds(selectedOptionIds);
+
+    const score = selectedOptions.filter((opt: any) => opt.isCorrect).length;
+    const totalQuestions = Object.keys(answers).length;
+    const passed = score >= totalQuestions * 0.7;
+
+    if (passed) {
+      const assessment = await this.repo.findAssessmentById(assessmentId);
+      if (assessment) {
+        const enrollment = await this.repo.findEnrollment(assessment.courseId, userId);
+        if (enrollment) {
+          await this.repo.updateEnrollmentProgress(enrollment.id, 100.0);
+        }
+      }
+    }
+
+    return {
+      score,
+      total_questions: totalQuestions,
+      passed,
+    };
   }
 }

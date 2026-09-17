@@ -1,6 +1,7 @@
 import { ICommand, IHandler } from '../../mediator.interface';
-import { usersService, UsersService } from '../../../services/users.service';
+import { usersRepository, UsersRepository } from '../../../repositories/user.repository';
 import { Role } from '@prisma/client';
+import { NotFoundError } from '../../../shared/errors/custom-errors';
 
 export class UpdateUserRoleCommand implements ICommand<any> {
   readonly kind = 'UpdateUserRoleCommand';
@@ -11,9 +12,21 @@ export class UpdateUserRoleCommand implements ICommand<any> {
 }
 
 export class UpdateUserRoleCommandHandler implements IHandler<UpdateUserRoleCommand, any> {
-  constructor(private service: UsersService = usersService) {}
+  constructor(private repo: UsersRepository = usersRepository) {}
 
   async handle(command: UpdateUserRoleCommand): Promise<any> {
-    return this.service.updateUserRole(command.userId, command.role);
+    try {
+      const updatedUser = await this.repo.updateUserRole(command.userId, command.role);
+      return {
+        message: 'User role updated successfully',
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          role: updatedUser.role,
+        },
+      };
+    } catch (error) {
+      throw new NotFoundError('User not found');
+    }
   }
 }

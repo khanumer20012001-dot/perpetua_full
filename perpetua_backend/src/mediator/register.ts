@@ -26,6 +26,8 @@ import { IssueCertificateCommandHandler, GetUserCertificatesQueryHandler } from 
 import { ListUsersQueryHandler } from './queries/users/list-users.handler';
 import { UpdateUserRoleCommandHandler } from './commands/users/update-user-role.handler';
 import { GenerateAiCourseCommandHandler } from '../modules/gemini/handlers/generate-course.handler';
+import { StreamDiscoveryQuestionsCommandHandler } from '../modules/gemini/handlers/stream-discovery.handler';
+import { StreamCourseDraftCommandHandler } from '../modules/gemini/handlers/stream-draft.handler';
 
 let isRegistered = false;
 
@@ -72,6 +74,8 @@ export function registerMediatorHandlers(): void {
 
   // Gemini AI
   mediator.register('GenerateAiCourseCommand', new GenerateAiCourseCommandHandler());
+  mediator.register('StreamDiscoveryQuestionsCommand', new StreamDiscoveryQuestionsCommandHandler());
+  mediator.register('StreamCourseDraftCommand', new StreamCourseDraftCommandHandler());
 
   isRegistered = true;
 }
