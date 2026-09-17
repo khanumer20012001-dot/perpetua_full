@@ -1,13 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { mediator } from '../mediator/mediator';
-import { IssueCertificateCommandHandler, GetUserCertificatesQueryHandler } from '../mediator/commands/certificates/issue-certificate.handler';
 import { certificatesController } from '../controllers/certificates.controller';
-
-// Register mediator handler
-mediator.register('IssueCertificateCommand', new IssueCertificateCommandHandler());
-mediator.register('GetUserCertificatesQuery', new GetUserCertificatesQueryHandler());
 
 export const certificateRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();

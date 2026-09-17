@@ -1,30 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { mediator } from '../mediator/mediator';
-import {
-  CreateCourseCommandHandler,
-  CreateModuleCommandHandler,
-  CreateChapterCommandHandler,
-  CreateFullCourseCommandHandler,
-  UpdateFullCourseCommandHandler,
-  GetPublishedCoursesQueryHandler,
-  GetCourseDetailQueryHandler,
-  PublishCourseCommandHandler,
-  DeleteCourseCommandHandler,
-} from '../mediator/commands/courses/course.handlers';
 import { coursesController } from '../controllers/courses.controller';
-
-// Register mediator handlers
-mediator.register('CreateCourseCommand', new CreateCourseCommandHandler());
-mediator.register('CreateModuleCommand', new CreateModuleCommandHandler());
-mediator.register('CreateChapterCommand', new CreateChapterCommandHandler());
-mediator.register('CreateFullCourseCommand', new CreateFullCourseCommandHandler());
-mediator.register('UpdateFullCourseCommand', new UpdateFullCourseCommandHandler());
-mediator.register('GetPublishedCoursesQuery', new GetPublishedCoursesQueryHandler());
-mediator.register('GetCourseDetailQuery', new GetCourseDetailQueryHandler());
-mediator.register('PublishCourseCommand', new PublishCourseCommandHandler());
-mediator.register('DeleteCourseCommand', new DeleteCourseCommandHandler());
 
 export const designerCourseRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();

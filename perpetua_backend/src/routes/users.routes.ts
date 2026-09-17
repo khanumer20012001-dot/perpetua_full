@@ -1,14 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { mediator } from '../mediator/mediator';
-import { ListUsersQuery, ListUsersQueryHandler } from '../mediator/queries/users/list-users.handler';
-import { UpdateUserRoleCommand, UpdateUserRoleCommandHandler } from '../mediator/commands/users/update-user-role.handler';
 import { usersController } from '../controllers/users.controller';
-
-// Register mediator handlers
-mediator.register('ListUsersQuery', new ListUsersQueryHandler());
-mediator.register('UpdateUserRoleCommand', new UpdateUserRoleCommandHandler());
 
 export const usersRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();

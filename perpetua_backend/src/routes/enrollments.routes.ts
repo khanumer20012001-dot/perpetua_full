@@ -1,20 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { mediator } from '../mediator/mediator';
-import {
-  EnrollCourseCommandHandler,
-  GetUserEnrollmentsQueryHandler,
-  GetDashboardStatsQueryHandler,
-  UpdateProgressCommandHandler,
-} from '../mediator/commands/enrollments/enrollment.handlers';
 import { enrollmentsController } from '../controllers/enrollments.controller';
-
-// Register mediator handlers
-mediator.register('EnrollCourseCommand', new EnrollCourseCommandHandler());
-mediator.register('GetUserEnrollmentsQuery', new GetUserEnrollmentsQueryHandler());
-mediator.register('GetDashboardStatsQuery', new GetDashboardStatsQueryHandler());
-mediator.register('UpdateProgressCommand', new UpdateProgressCommandHandler());
 
 export const enrollmentRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();

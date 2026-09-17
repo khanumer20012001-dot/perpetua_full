@@ -149,3 +149,15 @@ export class DeleteCourseCommandHandler implements IHandler<DeleteCourseCommand,
     return this.service.deleteCourse(command.courseId);
   }
 }
+
+export class GetAllCoursesQuery implements IQuery<any[]> {
+  readonly kind = 'GetAllCoursesQuery';
+}
+
+export class GetAllCoursesQueryHandler implements IHandler<GetAllCoursesQuery, any[]> {
+  constructor(private service: CoursesService = coursesService) {}
+  async handle(_query: GetAllCoursesQuery): Promise<any[]> {
+    return this.service.getAllCourses();
+  }
+}
+

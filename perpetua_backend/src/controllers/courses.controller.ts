@@ -1,6 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { mediator } from '../mediator/mediator';
-import { coursesService } from '../services/courses.service';
 import {
   CreateCourseCommand,
   CreateModuleCommand,
@@ -11,6 +10,7 @@ import {
   GetCourseDetailQuery,
   PublishCourseCommand,
   DeleteCourseCommand,
+  GetAllCoursesQuery,
 } from '../mediator/commands/courses/course.handlers';
 
 type FastifyReq = FastifyRequest<any>;
@@ -109,7 +109,7 @@ export class CoursesController {
 
   async getAllCourses(_request: FastifyReq, reply: FastifyReply) {
     try {
-      const courses = await coursesService.getAllCourses();
+      const courses = await mediator.send(new GetAllCoursesQuery());
       return reply.send(courses);
     } catch (error: any) {
       return reply.status(error.statusCode || 500).send({ detail: error.message });

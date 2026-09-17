@@ -1,12 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { mediator } from '../mediator/mediator';
-import { GenerateAiCourseCommandHandler } from '../modules/gemini/handlers/generate-course.handler';
 import { geminiController } from '../controllers/gemini.controller';
-
-// Register mediator handler
-mediator.register('GenerateAiCourseCommand', new GenerateAiCourseCommandHandler());
 
 export const geminiRoutes: FastifyPluginAsync = async (app) => {
   const server = app.withTypeProvider<ZodTypeProvider>();

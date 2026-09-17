@@ -19,6 +19,11 @@ import { quizRoutes } from './routes/quizzes.routes';
 import { certificateRoutes } from './routes/certificates.routes';
 import { geminiRoutes } from './routes/gemini.routes';
 import { usersRoutes } from './routes/users.routes';
+// Mediator Registration
+import { registerMediatorHandlers } from './mediator/register';
+
+// Register CQRS Mediator Handlers
+registerMediatorHandlers();
 
 // ─── Create Fastify Application Instance ─────────────────────────────────────
 const app = Fastify({
