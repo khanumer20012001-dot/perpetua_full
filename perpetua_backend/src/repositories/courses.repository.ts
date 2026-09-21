@@ -1,4 +1,5 @@
 import { prisma } from '../db/prisma';
+import { cloudinaryService } from '../modules/cloudinary/cloudinary.service';
 
 export class CoursesRepository {
   async createCourse(data: {
@@ -6,14 +7,17 @@ export class CoursesRepository {
     description?: string;
     cover_image?: string;
     created_by_id: string;
+    metadata?: any;
   }) {
+    const uploadedCoverImage = data.cover_image ? await cloudinaryService.uploadImage(data.cover_image) : undefined;
     return prisma.course.create({
       data: {
         title: data.title,
         description: data.description,
-        coverImage: data.cover_image,
+        coverImage: uploadedCoverImage,
         createdById: data.created_by_id,
         status: 'DRAFT',
+        metadata: data.metadata || null,
       },
     });
   }
@@ -27,7 +31,7 @@ export class CoursesRepository {
 
 
   async findCourseDetailsById(id: string) {
-    const course = await prisma.course.findUnique({
+    const course = await (prisma as any).course.findUnique({
       where: { id },
       include: {
         modules: {
@@ -48,6 +52,7 @@ export class CoursesRepository {
           },
         },
         enrollments: true,
+        ratings: true,
         createdBy: {
           select: {
             id: true,
@@ -60,13 +65,13 @@ export class CoursesRepository {
 
     if (!course) return null;
 
-    const questions = course.assessments.flatMap((a) => a.questions) || [];
-    const formattedModules = course.modules.map((mod, index) => {
+    const questions = course.assessments.flatMap((a: any) => a.questions) || [];
+    const formattedModules = course.modules.map((mod: any, index: number) => {
       const q = questions.find((item: any) => item.moduleId === mod.id) || questions[index];
       let quiz = null;
       if (q && q.questionText && q.options && q.options.length > 0) {
-        const options = q.options.map((o) => o.optionText);
-        const correctIdx = q.options.findIndex((o) => o.isCorrect);
+        const options = q.options.map((o: any) => o.optionText);
+        const correctIdx = q.options.findIndex((o: any) => o.isCorrect);
         quiz = {
           id: q.id,
           question: q.questionText,
@@ -76,18 +81,35 @@ export class CoursesRepository {
       }
       return {
         ...mod,
+        content: mod.chapters && mod.chapters.length > 0 ? mod.chapters[0].content : (mod.content || ''),
         quiz,
       };
     });
 
+    const ratingsList = course.ratings || [];
+    const feedbackScore = ratingsList.length > 0
+      ? (ratingsList.reduce((acc: number, curr: any) => acc + curr.rating, 0) / ratingsList.length).toFixed(1).replace(/\.0$/, '')
+      : '-';
+
+    const completions = course.enrollments?.filter((e: any) => e.progressPercent >= 100).length || 0;
+    const inProgressCount = course.enrollments?.filter((e: any) => e.progressPercent < 100).length || 0;
+    const totalMinutes = formattedModules.reduce((acc: number, mod: any) => {
+      return acc + (mod.chapters?.reduce((cAcc: number, chap: any) => cAcc + (chap.duration || 0), 0) || 0);
+    }, 0);
+
     return {
       ...course,
+      feedbackScore,
       modules: formattedModules,
+      completions,
+      inProgressCount,
+      totalMinutes,
+      averageScore: 0,
     };
   }
 
   async findPublishedCourses() {
-    const courses = await prisma.course.findMany({
+    const courses = await (prisma as any).course.findMany({
       where: { status: 'PUBLISHED' },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -109,6 +131,7 @@ export class CoursesRepository {
           },
         },
         enrollments: true,
+        ratings: true,
         createdBy: {
           select: {
             id: true,
@@ -119,14 +142,14 @@ export class CoursesRepository {
       },
     });
 
-    return courses.map((course) => {
-      const questions = course.assessments.flatMap((a) => a.questions) || [];
-      const formattedModules = course.modules.map((mod, index) => {
+    return courses.map((course: any) => {
+      const questions = course.assessments.flatMap((a: any) => a.questions) || [];
+      const formattedModules = course.modules.map((mod: any, index: number) => {
         const q = questions.find((item: any) => item.moduleId === mod.id) || questions[index];
         let quiz = null;
         if (q && q.questionText && q.options && q.options.length > 0) {
-          const options = q.options.map((o) => o.optionText);
-          const correctIdx = q.options.findIndex((o) => o.isCorrect);
+          const options = q.options.map((o: any) => o.optionText);
+          const correctIdx = q.options.findIndex((o: any) => o.isCorrect);
           quiz = {
             id: q.id,
             question: q.questionText,
@@ -136,19 +159,36 @@ export class CoursesRepository {
         }
         return {
           ...mod,
+          content: mod.chapters && mod.chapters.length > 0 ? mod.chapters[0].content : (mod.content || ''),
           quiz,
         };
       });
 
+      const ratingsList = course.ratings || [];
+      const feedbackScore = ratingsList.length > 0
+        ? (ratingsList.reduce((acc: number, curr: any) => acc + curr.rating, 0) / ratingsList.length).toFixed(1).replace(/\.0$/, '')
+        : '-';
+
+      const completions = course.enrollments?.filter((e: any) => e.progressPercent >= 100).length || 0;
+      const inProgressCount = course.enrollments?.filter((e: any) => e.progressPercent < 100).length || 0;
+      const totalMinutes = formattedModules.reduce((acc: number, mod: any) => {
+        return acc + (mod.chapters?.reduce((cAcc: number, chap: any) => cAcc + (chap.duration || 0), 0) || 0);
+      }, 0);
+
       return {
         ...course,
+        feedbackScore,
         modules: formattedModules,
+        completions,
+        inProgressCount,
+        totalMinutes,
+        averageScore: 0,
       };
     });
   }
 
   async findAllCourses() {
-    const courses = await prisma.course.findMany({
+    const courses = await (prisma as any).course.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
         modules: {
@@ -169,6 +209,7 @@ export class CoursesRepository {
           },
         },
         enrollments: true,
+        ratings: true,
         createdBy: {
           select: {
             id: true,
@@ -179,14 +220,14 @@ export class CoursesRepository {
       },
     });
 
-    return courses.map((course) => {
-      const questions = course.assessments.flatMap((a) => a.questions) || [];
-      const formattedModules = course.modules.map((mod, index) => {
+    return courses.map((course: any) => {
+      const questions = course.assessments.flatMap((a: any) => a.questions) || [];
+      const formattedModules = course.modules.map((mod: any, index: number) => {
         const q = questions.find((item: any) => item.moduleId === mod.id) || questions[index];
         let quiz = null;
         if (q && q.questionText && q.options && q.options.length > 0) {
-          const options = q.options.map((o) => o.optionText);
-          const correctIdx = q.options.findIndex((o) => o.isCorrect);
+          const options = q.options.map((o: any) => o.optionText);
+          const correctIdx = q.options.findIndex((o: any) => o.isCorrect);
           quiz = {
             id: q.id,
             question: q.questionText,
@@ -196,13 +237,30 @@ export class CoursesRepository {
         }
         return {
           ...mod,
+          content: mod.chapters && mod.chapters.length > 0 ? mod.chapters[0].content : (mod.content || ''),
           quiz,
         };
       });
 
+      const ratingsList = course.ratings || [];
+      const feedbackScore = ratingsList.length > 0
+        ? (ratingsList.reduce((acc: number, curr: any) => acc + curr.rating, 0) / ratingsList.length).toFixed(1).replace(/\.0$/, '')
+        : '-';
+
+      const completions = course.enrollments?.filter((e: any) => e.progressPercent >= 100).length || 0;
+      const inProgressCount = course.enrollments?.filter((e: any) => e.progressPercent < 100).length || 0;
+      const totalMinutes = formattedModules.reduce((acc: number, mod: any) => {
+        return acc + (mod.chapters?.reduce((cAcc: number, chap: any) => cAcc + (chap.duration || 0), 0) || 0);
+      }, 0);
+
       return {
         ...course,
+        feedbackScore,
         modules: formattedModules,
+        completions,
+        inProgressCount,
+        totalMinutes,
+        averageScore: 0,
       };
     });
   }
@@ -266,6 +324,7 @@ export class CoursesRepository {
     description?: string;
     created_by_id: string;
     status?: 'DRAFT' | 'PUBLISHED';
+    metadata?: any;
     modules: Array<{
       title: string;
       duration?: string;
@@ -288,6 +347,7 @@ export class CoursesRepository {
         description: data.description || '',
         createdById: data.created_by_id,
         status: data.status || 'DRAFT',
+        metadata: data.metadata || null,
         modules: {
           create: data.modules.map((mod, index) => {
             const minsMatch = (mod.duration || '15 mins').match(/(\d+)/);
@@ -369,6 +429,7 @@ export class CoursesRepository {
     description?: string;
     cover_image?: string;
     status?: 'DRAFT' | 'PUBLISHED';
+    metadata?: any;
     modules?: Array<{
       id?: string;
       title: string;
@@ -389,14 +450,17 @@ export class CoursesRepository {
       };
     }>;
   }) {
+    const uploadedCoverImage = data.cover_image ? await cloudinaryService.uploadImage(data.cover_image) : undefined;
+
     // 1. Update basic fields on course
     await prisma.course.update({
       where: { id },
       data: {
         ...(data.title ? { title: data.title } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
-        ...(data.cover_image !== undefined ? { coverImage: data.cover_image } : {}),
+        ...(uploadedCoverImage !== undefined ? { coverImage: uploadedCoverImage } : {}),
         ...(data.status ? { status: data.status } : {}),
+        ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
       },
     });
 

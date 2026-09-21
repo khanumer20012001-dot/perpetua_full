@@ -75,6 +75,7 @@ export class CreateFullCourseCommand implements ICommand<any> {
       title: string;
       description?: string;
       created_by_id: string;
+      metadata?: any;
       modules: Array<{
         title: string;
         duration?: string;

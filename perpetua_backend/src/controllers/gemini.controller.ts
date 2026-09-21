@@ -89,43 +89,71 @@ export class GeminiController {
     reply.raw.setHeader('Cache-Control', 'no-cache');
     reply.raw.setHeader('Connection', 'keep-alive');
     reply.raw.setHeader('Access-Control-Allow-Origin', '*');
+    reply.raw.flushHeaders();
 
     const sendEvent = (event: string, data: any) => {
       reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      if (typeof (reply.raw as any).flush === 'function') {
+        (reply.raw as any).flush();
+      }
     };
 
+    let currentProgress = 15;
+    let latestTitle = "";
+    let accumulatedText = "";
+    let generatedModulesCount = 1;
+
+    sendEvent('progress', {
+      progress: currentProgress,
+      currentModule: 1,
+      totalModules: 5,
+      statusText: 'Analyzing brief and initializing AI...',
+      timeRemainingMinutes: 2,
+    });
+
+    const onChunk = (chunk: string) => {
+      accumulatedText += chunk;
+      const titleMatches = [...accumulatedText.matchAll(/"title"\s*:\s*"([^"]+)"/g)];
+      if (titleMatches.length > 0) {
+        const lastTitle = titleMatches[titleMatches.length - 1][1];
+        if (lastTitle !== latestTitle) {
+          latestTitle = lastTitle;
+          generatedModulesCount = Math.max(1, Math.min(5, titleMatches.length));
+          
+          sendEvent('progress', {
+            progress: currentProgress,
+            currentModule: generatedModulesCount,
+            totalModules: 5,
+            statusText: `Generating: ${latestTitle}...`,
+            timeRemainingMinutes: 1,
+          });
+        }
+      }
+    };
+
+    // Start a heartbeat interval to simulate ongoing work
+    const heartbeat = setInterval(() => {
+      if (currentProgress < 90) {
+        currentProgress += Math.floor(Math.random() * 3) + 1; // Increment by 1-3%
+        
+        let statusText = latestTitle ? `Generating: ${latestTitle}...` : 'Structuring lessons & chapter content...';
+        
+        sendEvent('progress', {
+          progress: currentProgress,
+          currentModule: generatedModulesCount,
+          totalModules: 5,
+          statusText,
+          timeRemainingMinutes: 1,
+        });
+      }
+    }, 2000); // Send an update every 2 seconds
+
     try {
-      sendEvent('progress', {
-        progress: 15,
-        currentModule: 1,
-        totalModules: 5,
-        statusText: 'Generating module structure...',
-        timeRemainingMinutes: 2,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      sendEvent('progress', {
-        progress: 40,
-        currentModule: 2,
-        totalModules: 5,
-        statusText: 'Structuring lessons & chapter content...',
-        timeRemainingMinutes: 1,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      sendEvent('progress', {
-        progress: 75,
-        currentModule: 4,
-        totalModules: 5,
-        statusText: 'Crafting assessments & 10-question final evaluation...',
-        timeRemainingMinutes: 1,
-      });
-
       const { rawResponse, parsed } = (await mediator.send(
-        new StreamCourseDraftCommand(brief || 'General course draft')
+        new StreamCourseDraftCommand(brief || 'General course draft', onChunk)
       )) as { rawResponse: string; parsed: any };
+
+      clearInterval(heartbeat);
 
       sendEvent('complete', {
         progress: 100,
@@ -136,6 +164,7 @@ export class GeminiController {
         content: rawResponse,
       });
     } catch (err: any) {
+      clearInterval(heartbeat);
       console.error('Error in stream draft:', err);
       sendEvent('error', { error: err.message || 'Course draft generation failed' });
     } finally {

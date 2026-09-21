@@ -19,6 +19,7 @@ import { quizRoutes } from './routes/quizzes.routes';
 import { certificateRoutes } from './routes/certificates.routes';
 import { geminiRoutes } from './routes/gemini.routes';
 import { usersRoutes } from './routes/users.routes';
+import { ratingRoutes } from './routes/ratings.routes';
 // Mediator Registration
 import { registerMediatorHandlers } from './mediator/register';
 
@@ -52,6 +53,7 @@ app.register(authRoutes, { prefix: '/api/auth' });
 app.register(designerCourseRoutes, { prefix: '/api/designer' });
 app.register(learnerCourseRoutes, { prefix: '/api/learner' });
 app.register(enrollmentRoutes, { prefix: '/api/learner' });
+app.register(ratingRoutes, { prefix: '/api/learner' });
 app.register(quizRoutes, { prefix: '/api/quizzes' });
 app.register(certificateRoutes, { prefix: '/api/certificates' });
 app.register(geminiRoutes, { prefix: '/api/gemini' });

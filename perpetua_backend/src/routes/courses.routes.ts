@@ -71,6 +71,7 @@ export const designerCourseRoutes: FastifyPluginAsync = async (app) => {
           description: z.string().optional(),
           created_by_id: z.string(),
           status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+          metadata: z.any().optional(),
           modules: z.array(
             z.object({
               title: z.string(),
@@ -113,6 +114,7 @@ export const designerCourseRoutes: FastifyPluginAsync = async (app) => {
           description: z.string().optional(),
           cover_image: z.string().optional(),
           status: z.enum(['DRAFT', 'PUBLISHED']).optional(),
+          metadata: z.any().optional(),
           modules: z.array(
             z.object({
               id: z.string().optional(),

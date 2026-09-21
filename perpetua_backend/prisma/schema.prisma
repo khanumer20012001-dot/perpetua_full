@@ -30,6 +30,7 @@ model User {
   coursesCreated Course[]    @relation("CourseCreator")
   enrollments    Enrollment[]
   certificates   Certificate[]
+  ratings        CourseRating[]
 
   @@map("users")
 }
@@ -49,9 +50,11 @@ model Course {
   assessments      Assessment[]
   enrollments      Enrollment[]
   certificates     Certificate[]
+  ratings          CourseRating[]
 
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
+  metadata         Json?
 
   @@map("courses")
 }
@@ -168,3 +171,17 @@ model OtpCode {
 
   @@map("otp_codes")
 }
+
+model CourseRating {
+  id        String   @id @default(uuid())
+  courseId  String   @map("course_id")
+  userId    String?  @map("user_id")
+  rating    Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("course_ratings")
+}
+

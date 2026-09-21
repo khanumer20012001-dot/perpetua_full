@@ -36,6 +36,7 @@ export class EnrollmentsRepository {
       where: {
         userId,
         progressPercent: { lt: 100 },
+        completedAt: null,
       },
     });
   }
@@ -44,7 +45,10 @@ export class EnrollmentsRepository {
     return prisma.enrollment.count({
       where: {
         userId,
-        progressPercent: 100,
+        OR: [
+          { progressPercent: { gte: 100 } },
+          { completedAt: { not: null } },
+        ],
       },
     });
   }
@@ -60,6 +64,7 @@ export class EnrollmentsRepository {
       where: {
         userId,
         progressPercent: { lt: 100 },
+        completedAt: null,
       },
       orderBy: { lastActiveAt: 'desc' },
       include: {
@@ -82,12 +87,13 @@ export class EnrollmentsRepository {
     if (!enrollment) {
       enrollment = await this.createEnrollment(userId, courseId);
     }
+    const isDone = progressPercent >= 100;
     return prisma.enrollment.update({
       where: { id: enrollment.id },
       data: {
         progressPercent,
         lastActiveAt: new Date(),
-        completedAt: progressPercent >= 100 ? new Date() : enrollment.completedAt,
+        completedAt: isDone ? (enrollment.completedAt || new Date()) : enrollment.completedAt,
       },
     });
   }
