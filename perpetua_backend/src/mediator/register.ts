@@ -22,7 +22,8 @@ import {
   UpdateProgressCommandHandler,
 } from './commands/enrollments/enrollment.handlers';
 import { GetQuizQueryHandler, SubmitQuizCommandHandler } from './commands/assessments/quiz.handlers';
-import { IssueCertificateCommandHandler, GetUserCertificatesQueryHandler } from './commands/certificates/issue-certificate.handler';
+import { IssueCertificateCommandHandler } from './commands/certificates/issue-certificate.handler';
+import { GetUserCertificatesQueryHandler } from './queries/certificates/get-user-certificates.query';
 import { ListUsersQueryHandler } from './queries/users/list-users.handler';
 import { UpdateUserRoleCommandHandler } from './commands/users/update-user-role.handler';
 import { GenerateAiCourseCommandHandler } from '../modules/gemini/handlers/generate-course.handler';

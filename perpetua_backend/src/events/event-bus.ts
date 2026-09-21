@@ -47,35 +47,4 @@ class EventBus {
 
 export const eventBus = new EventBus();
 
-// ─── Domain Event Names ─────────────────────────────────────────────────────
-export const DomainEvents = {
-  COURSE_COMPLETED: 'CourseCompletedEvent',
-  OTP_REQUESTED: 'OtpRequestedEvent',
-  CERTIFICATE_ISSUED: 'CertificateIssuedEvent',
-  AI_TASK_STARTED: 'AiTaskStartedEvent',
-  AI_TASK_COMPLETED: 'AiTaskCompletedEvent',
-} as const;
-
-// ─── Event Payload Types ─────────────────────────────────────────────────────
-export interface CourseCompletedPayload {
-  userId: string;
-  courseId: string;
-  enrollmentId: string;
-}
-
-export interface OtpRequestedPayload {
-  email: string;
-  code: string;
-}
-
-export interface CertificateIssuedPayload {
-  userId: string;
-  courseId: string;
-  certificateId: string;
-}
-
-export interface AiTaskPayload {
-  action: string;
-  prompt?: string;
-  brief?: string;
-}
+export * from './events';

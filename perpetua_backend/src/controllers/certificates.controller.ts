@@ -1,7 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { mediator } from '../mediator/mediator';
-import { IssueCertificateCommand, GetUserCertificatesQuery } from '../mediator/commands/certificates/issue-certificate.handler';
-
+import { IssueCertificateCommand } from '../mediator/commands/certificates/issue-certificate.handler';
+import { GetUserCertificatesQuery } from '../mediator/queries/certificates/get-user-certificates.query';
 export class CertificatesController {
   async issueCertificate(request: FastifyRequest<any>, reply: FastifyReply) {
     const { user_id, course_id, format } = request.body as { user_id: string; course_id: string; format?: any };
