@@ -7,6 +7,9 @@ import { env } from '../config/env.config';
 export const authPlugin = fp(async (fastify) => {
   await fastify.register(jwt, {
     secret: env.JWT_SECRET,
+    sign: {
+      expiresIn: '24h'
+    }
   });
 
   fastify.decorate('authenticate', async function (request: FastifyRequest, reply: FastifyReply) {

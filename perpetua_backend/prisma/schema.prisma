@@ -18,12 +18,22 @@ enum CourseStatus {
   PUBLISHED
 }
 
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model User {
   id            String       @id @default(uuid())
   email         String       @unique
   fullName      String       @map("full_name")
   role          Role         @default(LEARNER)
-  profileImage  String?      @map("profile_image")
+  status        UserStatus   @default(ACTIVE)
+  department    String?
+  phoneNumber          String?      @map("phone_number")
+  jobTitle             String?      @map("job_title")
+  professionalSummary  String?      @map("professional_summary")
+  profileImage         String?      @map("profile_image")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -31,6 +41,7 @@ model User {
   enrollments    Enrollment[]
   certificates   Certificate[]
   ratings        CourseRating[]
+
 
   @@map("users")
 }

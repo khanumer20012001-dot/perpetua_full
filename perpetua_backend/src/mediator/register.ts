@@ -25,7 +25,10 @@ import { GetQuizQueryHandler, SubmitQuizCommandHandler } from './commands/assess
 import { IssueCertificateCommandHandler } from './commands/certificates/issue-certificate.handler';
 import { GetUserCertificatesQueryHandler } from './queries/certificates/get-user-certificates.query';
 import { ListUsersQueryHandler } from './queries/users/list-users.handler';
+import { GetUserQueryHandler } from './queries/users/get-user.handler';
 import { UpdateUserRoleCommandHandler } from './commands/users/update-user-role.handler';
+import { CreateUserCommandHandler } from './commands/users/create-user.handler';
+import { UpdateUserCommandHandler } from './commands/users/update-user.handler';
 import { GenerateAiCourseCommandHandler } from '../modules/gemini/handlers/generate-course.handler';
 import { StreamDiscoveryQuestionsCommandHandler } from '../modules/gemini/handlers/stream-discovery.handler';
 import { StreamCourseDraftCommandHandler } from '../modules/gemini/handlers/stream-draft.handler';
@@ -72,7 +75,10 @@ export function registerMediatorHandlers(): void {
 
   // Users
   mediator.register('ListUsersQuery', new ListUsersQueryHandler());
+  mediator.register('GetUserQuery', new GetUserQueryHandler());
   mediator.register('UpdateUserRoleCommand', new UpdateUserRoleCommandHandler());
+  mediator.register('CreateUserCommand', new CreateUserCommandHandler());
+  mediator.register('UpdateUserCommand', new UpdateUserCommandHandler());
 
   // Gemini AI
   mediator.register('GenerateAiCourseCommand', new GenerateAiCourseCommandHandler());
